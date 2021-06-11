@@ -166,4 +166,48 @@ class Environment:
                 k += 1
         return state
 
-    # def gameOver(self, forceRecalculate = False):
+    def gameOver(self, forceRecalculate=False):
+        # Retorna true se o jogo acabou (alguem ganhou ou empate). Se nao, retorna false.
+        # define a variavel de exemplo 'vencedor' e a variavel de instancia 'encerrada'
+        if not forceRecalculate and self.ended:
+            return self.ended
+
+        # Verificando se existe algum vencedor
+        # Checando as linhas
+        for i in range(POSSIBLE_TOTAL_STATES):
+            for player in (self.x, self.o):
+                if self.board[i].sum() == player*POSSIBLE_TOTAL_STATES:
+                    self.winner = player
+                    self.ended = True
+                    return True
+
+        # Checando as colunas
+        for j in range(POSSIBLE_TOTAL_STATES):
+            for player in (self.x, self.o):
+                if self.winner[j].sum() == player*POSSIBLE_TOTAL_STATES:
+                    self.winner = player
+                    self.ended = True
+                    return True
+
+        # Checando as diagonais
+        for player in (self.x, self.o):
+            # top/left -> bottom/right
+            if self.board.trace() == player*POSSIBLE_TOTAL_STATES:
+                self.winner = player
+                self.ended = True
+                return True
+            # top/right -> bottom/left
+            if np.fliplr(self.board).trace() == player*POSSIBLE_TOTAL_STATES:
+                self.winner = player
+                self.ended = True
+                return True
+
+        # Checa se e' empate
+        if np.all((self.board == 0) == False):
+            self.winner = None
+            self.ended = True
+            return True
+
+        # O Jogo ainda nao acabou
+        self.winner = None
+        return False
