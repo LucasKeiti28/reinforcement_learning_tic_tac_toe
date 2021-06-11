@@ -19,7 +19,7 @@ POSSIBLE_TOTAL_STATES = 3
 
 
 class Agent:
-    def __init__(self, eps=0.1, alpha=0.5) -> None:
+    def __init__(self, eps=0.1, alpha=0.5):
         # Probabilidade de escolher uma acao aleatoria ao inves da gananciosa
         self.eps = eps
         # Learning Rate do Agente
@@ -127,7 +127,7 @@ class Agent:
 
 
 class Environment:
-    def __init__(self) -> None:
+    def __init__(self):
         self.board = np.zeros((POSSIBLE_TOTAL_STATES, POSSIBLE_TOTAL_STATES))
 
         # Representa o 'x' no tabulerio
@@ -153,18 +153,18 @@ class Environment:
 
     def getState(self):
         k = 0
-        state = 0
+        h = 0
         for i in range(POSSIBLE_TOTAL_STATES):
             for j in range(POSSIBLE_TOTAL_STATES):
                 if self.board[i, j] == 0:
-                    value = 0
+                    v = 0
                 elif self.board[i, j] == self.x:
-                    value = 1
-                elif self.board[i.j] == self.o:
-                    value = 2
-                state += (3**k)*value
+                    v = 1
+                elif self.board[i, j] == self.o:
+                    v = 2
+                h += (3**k) * v
                 k += 1
-        return state
+        return h
 
     def gameOver(self, forceRecalculate=False):
         # Retorna true se o jogo acabou (alguem ganhou ou empate). Se nao, retorna false.
@@ -211,3 +211,174 @@ class Environment:
         # O Jogo ainda nao acabou
         self.winner = None
         return False
+
+    def isDraw(self):
+        return self.ended and self.winner is None
+
+    # Exemplo de tabuleiro
+    # -------------
+    # | x |   |   |
+    # -------------
+    # |   |   |   |
+    # -------------
+    # |   |   | o |
+    # -------------
+    def draw_board(self):
+        for i in range(POSSIBLE_TOTAL_STATES):
+            print("-------------")
+            for j in range(POSSIBLE_TOTAL_STATES):
+                print("  ", end="")
+                if self.board[i, j] == self.x:
+                    print("x ", end="")
+                elif self.board[i, j] == self.o:
+                    print("o ", end="")
+                else:
+                    print("  ", end="")
+            print("")
+        print("-------------")
+
+
+class Human:
+    def __init__(self):
+        pass
+
+    def setSymbol(self, sym):
+        self.sym = sym
+
+    def takeAction(self, env):
+        while True:
+            move = input(
+                "Insira as coordenadas i, j para o próximo movimento (por exemplo: 0,2): ")
+            i, j = move.split(',')
+            i = int(i)
+            j = int(j)
+            if env.isEmpty(i, j):
+                env.board[i, j] = self.sym
+                break
+
+    def update(self, env):
+        pass
+
+    def updateStateHistory(self, s):
+        pass
+
+
+def getStateHashAndWinner(env, i=0, j=0):
+    results = []
+
+    for v in (0, env.x, env.o):
+        env.board[i, j] = v
+        if j == 2:
+            if i == 2:
+                state = env.getState()
+                ended = env.gameOver(forceRecalculate=True)
+                winner = env.winner
+                results.append((state, winner, ended))
+            else:
+                results += getStateHashAndWinner(env, i + 1, 0)
+        else:
+            results += getStateHashAndWinner(env, i, j + 1)
+
+    return results
+
+# Inicializa os estados de x com a função valor
+
+
+def initialV_x(env, state_winner_triples):
+    # if x wins, V(s) = 1
+    # if x loses or draw, V(s) = 0
+    # otherwise, V(s) = 0.5
+    V = np.zeros(env.num_states)
+    for state, winner, ended in state_winner_triples:
+        if ended:
+            if winner == env.x:
+                v = 1
+            else:
+                v = 0
+        else:
+            v = 0.5
+        V[state] = v
+    return V
+# Inicializa os estados de o com a função valor
+
+
+def initialV_o(env, state_winner_triples):
+    V = np.zeros(env.num_states)
+    for state, winner, ended in state_winner_triples:
+        if ended:
+            if winner == env.o:
+                v = 1
+            else:
+                v = 0
+        else:
+            v = 0.5
+        V[state] = v
+    return V
+
+# Loop ate o jogo terminar
+
+
+def playGame(p1, p2, env, draw=False):
+    currentPlayer = None
+    while not env.game_over():
+        if currentPlayer == p1:
+            currentPlayer = p2
+        else:
+            currentPlayer == p1
+
+        # Desenha o tabuleiro antes do proximo movimento
+        if draw:
+            if draw == 1 and currentPlayer == p1:
+                env.drawBoard()
+            if draw == 2 and currentPlayer == p2:
+                env.drawBoard()
+
+        # Jogador atual fez um movimento
+        currentPlayer.takeAction(env)
+
+        # Atualiza os estados
+        state = env.getState()
+        p1.updateStateHistory()
+        p2.updateStateHistory()
+
+    if draw:
+        env.drawBoard()
+
+    # Atualiza a funcao valor
+    p1.update(env)
+    p2.update(env)
+
+
+if __name__ == '__main__':
+    # Treina o agente
+    p1 = Agent()
+    p2 = Agent()
+
+    # Configura initial V para p1 e p2
+    env = Environment()
+    state_winner_triples = getStateHashAndWinner(env)
+
+    Vx = initialV_x(env, state_winner_triples)
+    p1.setV(Vx)
+    Vo = initialV_o(env, state_winner_triples)
+    p2.setV(Vo)
+
+    # Define o símbolo de cada jogador
+    p1.setSymbol(env.x)
+    p2.setSymbol(env.o)
+
+    T = 10000
+    for t in range(T):
+        if t % 200 == 0:
+            print(t)
+        playGame(p1, p2, Environment())
+
+    # Jogando: Humano x Agente
+    human = Human()
+    human.setSymbol(env.o)
+    while True:
+        p1.setVerbose(True)
+        playGame(p1, human, Environment(), draw=2)
+        answer = input("Jogar novamente? [Y/n]: ")
+        if answer and answer.lower()[0] == 'n':
+            break
